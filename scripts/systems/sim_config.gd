@@ -26,6 +26,10 @@ const SLEEP_NEED_MULT := 0.5
 const HUNGER_CRITICAL := 75.0
 const THIRST_CRITICAL := 80.0
 const ENERGY_CRITICAL := 8.0
+
+# Decision making: a need wins when its urgency (0..1+) reaches its threshold;
+# the most urgent qualifying need decides the state.
+const NEED_THRESHOLDS := {"hunger": 0.5, "thirst": 0.5, "energy": 0.6, "health": 0.5, "social": 0.5}
 const HEALTH_LOSS := 0.8
 const EXHAUSTION_DAMAGE := 0.3
 const HEALTH_REGEN := 0.1
@@ -36,7 +40,7 @@ const HEALTHY_NEED_LIMIT := 60.0
 const WALK_SPEED := 55.0
 const WANDER_SPEED := 16.0  # prototype wander speed
 
-# Action tuning.
+# State tuning.
 const EAT_DURATION := 3.0
 const EAT_RATE := 18.0
 const DRINK_DURATION := 2.5
@@ -45,6 +49,7 @@ const SLEEP_RATE := 4.5
 const SLEEP_FIRE_BONUS := 1.5
 const SLEEP_MAX_DURATION := 30.0
 const WAKE_ENERGY := 60.0
+const WAKE_HEALTH := 50.0
 const SOCIAL_DURATION := 4.0
 const SOCIAL_RATE := 9.0
 const SOCIAL_RANGE := 260.0

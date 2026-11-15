@@ -151,10 +151,14 @@ func pick_tree(from: Vector2, rng: RandomNumberGenerator, need_fruit: bool) -> i
 	return candidates[rng.randi_range(0, mini(3, candidates.size() - 1))].x
 
 
-func pick_fishing_spot(from: Vector2, rng: RandomNumberGenerator) -> int:
-	var best := 0
+## Searches for a fishing spot with at least `min_fish` fish, preferring
+## close, well-stocked spots. Returns -1 if every spot is fished out.
+func pick_fishing_spot(from: Vector2, rng: RandomNumberGenerator, min_fish: float = 0.0) -> int:
+	var best := -1
 	var best_score := -INF
 	for i in range(fishing_spots.size()):
+		if spot_fish[i] < min_fish:
+			continue
 		var score := spot_fish[i] - from.distance_to(fishing_spots[i]) * 0.02 + rng.randf() * 3.0
 		if score > best_score:
 			best_score = score

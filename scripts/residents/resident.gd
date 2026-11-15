@@ -1,19 +1,30 @@
 class_name Resident
 extends RefCounted
 ## Data for one islander: identity, needs, personality, skills, relationships
-## and the current AI action. Behaviour lives in ResidentBrain / ResidentActions.
+## and the current AI state. Behaviour lives in scripts/ai/ (brain + states).
 
-enum Action { IDLE, WANDER, EAT, DRINK, SLEEP, WORK, SOCIALIZE }
-enum Phase { MOVE, PERFORM, DELIVER }
+## The eight Resident AI states (see scripts/ai/states/).
+enum State { IDLE, WORKING, SEARCHING_FOOD, SEARCHING_WATER, EATING, DRINKING, SLEEPING, SOCIALIZING }
+## Sub-steps used inside a state: walk there, do it, carry the result home.
+enum Step { MOVE, PERFORM, DELIVER }
 
-const ACTION_NAMES := {
-	Action.IDLE: "Santai",
-	Action.WANDER: "Jalan-jalan",
-	Action.EAT: "Makan",
-	Action.DRINK: "Minum",
-	Action.SLEEP: "Tidur",
-	Action.WORK: "Bekerja",
-	Action.SOCIALIZE: "Bersosialisasi",
+const STATE_NAMES := {
+	State.IDLE: "Santai",
+	State.WORKING: "Bekerja",
+	State.SEARCHING_FOOD: "Mencari Makanan",
+	State.SEARCHING_WATER: "Mencari Air",
+	State.EATING: "Makan",
+	State.DRINKING: "Minum",
+	State.SLEEPING: "Tidur",
+	State.SOCIALIZING: "Bersosialisasi",
+}
+
+const NEED_NAMES := {
+	"hunger": "Lapar",
+	"thirst": "Haus",
+	"energy": "Lelah",
+	"health": "Kesehatan",
+	"social": "Kesepian",
 }
 
 # Identity
@@ -41,35 +52,50 @@ var curiosity := 0.5   ## wandering and discovery chance
 var skills := {}         ## job name -> 0..1
 var relationships := {}  ## other resident id -> affinity (-100..100)
 
-# Current AI state.
-var action: int = Action.IDLE
-var phase: int = Phase.PERFORM
+# State machine data. Reset by ResidentStateMachine.change_state().
+var state: int = State.IDLE
+var step: int = Step.PERFORM
 var target := Vector2.ZERO
 var timer := 0.0
 var site_kind := ""
 var site_index := -1
 var partner_id := -1
+var attempts := 0          ## how many sources were tried while searching
+var redirect_state := -1   ## set by a state's enter() to hand over to another state
+
+# Kept across state changes.
 var carry_type := ""
 var carry_amount := 0.0
+var consumed_label := ""   ## what the resident found to eat/drink (for Eating/Drinking text)
 var think_cooldown := 0.0
 var status_text := "Baru terdampar"
-var last_scores := {}
+var decision_reason := ""  ## the need (or job) that drove the last decision
+var last_needs := {}       ## need -> urgency from the last decision
 
 
 func short_name() -> String:
 	return full_name.split(" ")[0]
 
 
-func action_name() -> String:
-	return str(ACTION_NAMES.get(action, "?"))
+func state_name() -> String:
+	return str(STATE_NAMES.get(state, "?"))
 
 
 func is_sleeping() -> bool:
-	return action == Action.SLEEP and phase == Phase.PERFORM
+	return state == State.SLEEPING and step == Step.PERFORM
 
 
 func is_working() -> bool:
-	return action == Action.WORK and phase != Phase.MOVE
+	return state == State.WORKING and step != Step.MOVE
+
+
+func is_chatting() -> bool:
+	return state == State.SOCIALIZING and step == Step.PERFORM
+
+
+## True for states in which the resident can be invited to chat.
+func is_available() -> bool:
+	return alive and state == State.IDLE
 
 
 func get_skill(job_name: String) -> float:

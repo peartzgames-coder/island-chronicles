@@ -17,8 +17,7 @@ static func update(r: Resident, delta: float) -> String:
 			drain += SimConfig.ENERGY_DRAIN_WORK
 		r.energy = maxf(0.0, r.energy - drain * delta)
 
-	var chatting := r.action == Resident.Action.SOCIALIZE and r.phase == Resident.Phase.PERFORM
-	if not chatting:
+	if not r.is_chatting():
 		r.social = maxf(0.0, r.social - SimConfig.SOCIAL_DECAY * delta)
 
 	var starving := r.hunger > SimConfig.HUNGER_CRITICAL

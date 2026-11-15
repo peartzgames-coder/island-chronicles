@@ -1,7 +1,8 @@
 class_name ResidentManager
 extends Node2D
-## Owns every Resident, runs their needs + AI each simulation step,
-## handles colony-level upkeep (camp fire) and draws the residents.
+## Owns every Resident and runs, each simulation step: needs (ResidentNeeds),
+## the state machine (ResidentStateMachine) and decisions (ResidentBrain).
+## Also handles colony upkeep (camp fire, spoilage) and draws the residents.
 
 signal resident_died(resident: Resident)
 
@@ -16,11 +17,12 @@ var clock: GameClock
 var event_log: EventLog
 var rng: RandomNumberGenerator
 var brain := ResidentBrain.new()
+var state_machine := ResidentStateMachine.new()
 
 var selected_id := -1
 var deaths := 0
 var births := 0
-var action_counts := {}  ## Resident.Action -> number of finished actions
+var state_counts := {}   ## Resident.State -> number of times the state was entered
 var delivered := {}      ## resource -> total amount delivered to camp
 
 var _discovery_cooldown := 0.0
@@ -60,6 +62,8 @@ func spawn_population(count: int) -> void:
 			r.skills[job_name] = _roll(profile.main_skill_range if job_name == r.job else profile.other_skill_range)
 		r.timer = rng.randf_range(0.0, 1.0)  # stagger the first decisions
 		residents.append(r)
+	if not state_machine.state_changed.is_connected(_on_state_changed):
+		state_machine.state_changed.connect(_on_state_changed)
 
 
 func _roll(value_range: Vector2) -> float:
@@ -83,24 +87,34 @@ func simulate(delta: float) -> void:
 
 
 func _update_ai(r: Resident, delta: float) -> void:
-	if ResidentActions.update(r, delta, self):
-		action_counts[r.action] = int(action_counts.get(r.action, 0)) + 1
-		_decide(r, -1)
+	if state_machine.update(r, delta, self):
+		decide(r, -1)
 		return
 	r.think_cooldown -= delta
 	if r.think_cooldown <= 0.0:
 		r.think_cooldown = rng.randf_range(0.8, 1.6)
 		if brain.should_interrupt(r, self):
-			_decide(r, r.action)
+			decide(r, r.state)
 
 
-func _decide(r: Resident, current: int) -> void:
-	var next := brain.choose_action(r, self, current)
-	if next == current:
+## Asks the brain for the next state. `current` (if >= 0) is the state being
+## interrupted; if the brain picks the same need it keeps running.
+func decide(r: Resident, current: int) -> void:
+	var next := brain.choose_state(r, self, current)
+	if current >= 0 and (next == current or ResidentBrain.handles_need(current, _need_of(next))):
 		return
-	if r.carry_amount > 0.0:
-		r.clear_carry()  # dropped while handling an emergency
-	ResidentActions.start(r, next, self)
+	state_machine.change_state(r, next, self)
+
+
+func _need_of(state: int) -> String:
+	for need in ResidentBrain.NEED_STATES:
+		if ResidentBrain.NEED_STATES[need] == state:
+			return need
+	return ""
+
+
+func _on_state_changed(_r: Resident, _from_state: int, to_state: int) -> void:
+	state_counts[to_state] = int(state_counts.get(to_state, 0)) + 1
 
 
 func _update_colony(delta: float) -> void:
@@ -138,13 +152,14 @@ func _kill(r: Resident, cause: String) -> void:
 	r.alive = false
 	r.cause_of_death = cause
 	r.clear_carry()
+	r.state = Resident.State.IDLE
 	r.status_text = "Meninggal"
 	deaths += 1
 	event_log.add("%s meninggal karena %s." % [r.full_name, cause])
 	resident_died.emit(r)
 
 
-# --- Services used by ResidentActions ----------------------------------------
+# --- Services used by the AI states -----------------------------------------
 
 func get_resident(id: int) -> Resident:
 	if id < 0 or id >= residents.size():
@@ -162,7 +177,7 @@ func find_social_partner(r: Resident) -> Resident:
 		if d > SimConfig.SOCIAL_RANGE:
 			continue
 		var score := 1.0 - d / SimConfig.SOCIAL_RANGE + r.get_affinity(other.id) / 40.0 + rng.randf() * 0.4
-		if other.action == Resident.Action.IDLE or other.action == Resident.Action.WANDER:
+		if other.is_available():
 			score += 0.3
 		if score > best_score:
 			best_score = score
@@ -210,7 +225,7 @@ func activity_summary() -> Dictionary:
 	var counts := {}
 	for r in residents:
 		if r.alive:
-			counts[r.action] = int(counts.get(r.action, 0)) + 1
+			counts[r.state] = int(counts.get(r.state, 0)) + 1
 	return counts
 
 
@@ -237,10 +252,10 @@ func describe(id: int) -> String:
 	if r.carry_amount > 0.0:
 		carry = "%d %s" % [int(round(r.carry_amount)), Stockpile.label(r.carry_type)]
 	var friend := get_resident(r.best_friend_id())
-	return "%s\nUsia: %d tahun\nPekerjaan: %s (%d%%)\nKesehatan: %d%%\nLapar: %d%%\nHaus: %d%%\nEnergi: %d%%\nSosial: %d%%\nAksi: %s\n> %s\nBawaan: %s\nSifat: Rajin %d · Ramah %d · Ingin tahu %d\nSahabat: %s" % [
+	return "%s\nUsia: %d tahun\nPekerjaan: %s (%d%%)\nKesehatan: %d%%\nLapar: %d%%\nHaus: %d%%\nEnergi: %d%%\nSosial: %d%%\nState: %s\n> %s\n(%s)\nBawaan: %s\nSifat: Rajin %d · Ramah %d · Ingin tahu %d\nSahabat: %s" % [
 		r.full_name, r.age, r.job, int(r.get_skill(r.job) * 100.0),
 		int(r.health), int(r.hunger), int(r.thirst), int(r.energy), int(r.social),
-		r.action_name(), r.status_text, carry,
+		r.state_name(), r.status_text, r.decision_reason, carry,
 		int(r.diligence * 100.0), int(r.sociability * 100.0), int(r.curiosity * 100.0),
 		friend.short_name() if friend != null else "-",
 	]
@@ -250,7 +265,7 @@ func describe(id: int) -> String:
 
 func _draw() -> void:
 	var selected := get_resident(selected_id)
-	if selected != null and selected.alive and selected.phase != Resident.Phase.PERFORM:
+	if selected != null and selected.alive and selected.step != Resident.Step.PERFORM:
 		draw_line(selected.pos, selected.target, Color(1.0, 0.94, 0.65, 0.45), 1.5)
 		draw_circle(selected.target, 3.0, Color(1.0, 0.94, 0.65, 0.6))
 	for r in residents:
@@ -277,7 +292,7 @@ func _draw_resident(r: Resident, is_selected: bool) -> void:
 		if r.carry_amount > 0.0:
 			var carried := ResourceCatalog.get_type(r.carry_type)
 			draw_rect(Rect2(pos.x - 3, pos.y - 15, 6, 5), carried.carry_color if carried != null else Color.WHITE)
-		elif r.action == Resident.Action.SOCIALIZE and r.phase == Resident.Phase.PERFORM:
+		elif r.is_chatting():
 			for i in range(3):
 				draw_circle(pos + Vector2(-4 + i * 4, -13), 1.2, Color(1, 1, 1, 0.85))
 	if is_selected:

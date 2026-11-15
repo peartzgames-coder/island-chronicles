@@ -164,11 +164,11 @@ func refresh(clock: GameClock, stockpile: Stockpile, manager: ResidentManager, e
 		if l != null:
 			l.text = Stockpile.label(resource) + ": " + str(int(stockpile.get_amount(resource)))
 	var a := manager.activity_summary()
-	activity_label.text = "Kerja %d · Tidur %d\nMakan %d · Minum %d\nSosial %d · Santai %d" % [
-		int(a.get(Resident.Action.WORK, 0)), int(a.get(Resident.Action.SLEEP, 0)),
-		int(a.get(Resident.Action.EAT, 0)), int(a.get(Resident.Action.DRINK, 0)),
-		int(a.get(Resident.Action.SOCIALIZE, 0)),
-		int(a.get(Resident.Action.WANDER, 0)) + int(a.get(Resident.Action.IDLE, 0)),
+	activity_label.text = "Kerja %d · Santai %d\nCari makan %d · Makan %d\nCari air %d · Minum %d\nTidur %d · Sosial %d" % [
+		int(a.get(Resident.State.WORKING, 0)), int(a.get(Resident.State.IDLE, 0)),
+		int(a.get(Resident.State.SEARCHING_FOOD, 0)), int(a.get(Resident.State.EATING, 0)),
+		int(a.get(Resident.State.SEARCHING_WATER, 0)), int(a.get(Resident.State.DRINKING, 0)),
+		int(a.get(Resident.State.SLEEPING, 0)), int(a.get(Resident.State.SOCIALIZING, 0)),
 	]
 	if not event_log.entries.is_empty():
 		log_label.text = event_log.as_text()
