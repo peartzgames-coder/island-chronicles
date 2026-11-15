@@ -2,7 +2,7 @@
 
 Every islander is an independent agent with needs, a job, a personality and
 relationships. Nothing is scripted per resident; behaviour emerges from the
-rules below. All tuning numbers live in `scripts/core/sim_config.gd`.
+rules below. Global tuning lives in `scripts/systems/sim_config.gd`; per-job and per-resource values are `.tres` files in `data/`.
 
 ## Data — `scripts/residents/resident.gd`
 | Group | Fields |
@@ -21,7 +21,7 @@ rules below. All tuning numbers live in `scripts/core/sim_config.gd`.
   It slowly regenerates when needs are under control, faster during sleep.
 - Health 0 → death, logged with the cause (kelaparan / dehidrasi / kelelahan).
 
-## Decisions — `scripts/residents/ai/resident_brain.gd` (utility AI)
+## Decisions — `scripts/ai/resident_brain.gd` (utility AI)
 Each action gets a score; the highest (plus a little noise) wins.
 
 | Action | Score grows with |
@@ -36,7 +36,7 @@ Decisions are made when an action finishes. Every ~1 s the brain also checks
 for interrupts: critical hunger/thirst/exhaustion, or nightfall while still
 walking to a job. Residents carrying goods finish delivering first.
 
-## Actions — `scripts/residents/ai/resident_actions.gd` (state machine)
+## Actions — `scripts/ai/resident_actions.gd` (state machine)
 `MOVE → PERFORM → (DELIVER)`
 
 | Action | Behaviour |
@@ -48,7 +48,7 @@ walking to a job. Residents carrying goods finish delivering first.
 | Socialize | walk to a nearby resident (friends preferred); a free partner joins the chat; both gain social and affinity |
 | Wander / Idle | prototype wandering |
 
-## Jobs — `scripts/residents/jobs/job_definitions.gd`
+## Jobs — `scripts/residents/job_definitions.gd` + `data/residents/job_*.tres`
 | Job | Site | Produces |
 |---|---|---|
 | Nelayan | beach fishing spots (fish regenerate) | Ikan |
@@ -61,7 +61,7 @@ so production self-regulates: residents work hard when stores are low and enjoy
 free time when they are full.
 
 ## Colony economy
-- Stockpile caps: 300 fish/fruit/water, 250 wood.
+- Start amounts, caps, spoilage and yields: `data/resources/*.tres` (caps: 300 fish/fruit/water, 250 wood).
 - Fish and fruit slowly spoil; the camp fire burns wood at night.
 - No wood → fire goes out (logged) → slower sleep recovery.
 - Low food triggers a log warning.

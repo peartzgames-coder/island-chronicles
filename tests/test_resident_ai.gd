@@ -16,8 +16,8 @@ func _initialize() -> void:
 	var clock := GameClock.new()
 	var stockpile := Stockpile.new()
 	var event_log := EventLog.new()
-	var map := IslandMap.new()
-	var manager := ResidentManager.new()
+	var map: IslandMap = load("res://scenes/world/island.tscn").instantiate()
+	var manager: ResidentManager = load("res://scenes/residents/resident_manager.tscn").instantiate()
 	root.add_child(map)
 	root.add_child(manager)
 	manager.setup(map, stockpile, clock, event_log, rng)
@@ -25,6 +25,13 @@ func _initialize() -> void:
 	clock.day_changed.connect(manager.on_day_changed)
 
 	_check(map.tree_positions.size() > 0, "island has trees")
+	_check(map.camp != null, "island scene contains the camp building")
+	_check(manager.profile != null and manager.profile.first_names.size() == 20, "resident profile data loaded")
+	for resource in Stockpile.ids():
+		_check(ResourceCatalog.get_type(resource) != null, "resource data for %s loaded" % resource)
+	for job in JobDefinitions.ALL:
+		_check(JobDefinitions.get_job(job) != null, "job data for %s loaded" % job)
+	_check(Stockpile.ids().size() == 4 and stockpile.get_amount(Stockpile.FISH) == 120.0, "stockpile starts from data")
 	for spot in map.fishing_spots:
 		_check(Geometry2D.is_point_in_polygon(spot, map.sand_polygon), "fishing spot %s is on the beach" % spot)
 	for r in manager.residents:
@@ -56,7 +63,7 @@ func _initialize() -> void:
 	print("Log: ", event_log.entries)
 
 	_check(manager.living_count() >= int(SimConfig.POPULATION * 0.9), "most residents survive %d days" % SIM_DAYS)
-	for resource in Stockpile.ORDER:
+	for resource in Stockpile.ids():
 		_check(float(manager.delivered.get(resource, 0.0)) > 0.0, "%s was delivered to camp" % resource)
 	for action in [Resident.Action.EAT, Resident.Action.DRINK, Resident.Action.SLEEP, Resident.Action.WORK, Resident.Action.SOCIALIZE]:
 		_check(int(manager.action_counts.get(action, 0)) > 0, "residents performed %s" % Resident.ACTION_NAMES[action])
@@ -82,10 +89,10 @@ func _test_food_crisis() -> void:
 	rng.seed = 99
 	var clock := GameClock.new()
 	var stockpile := Stockpile.new()
-	for resource in Stockpile.ORDER:
+	for resource in Stockpile.ids():
 		stockpile.amounts[resource] = 0.0
-	var map := IslandMap.new()
-	var manager := ResidentManager.new()
+	var map := IslandMap.new()  # bare map without its scene must also work
+	var manager: ResidentManager = load("res://scenes/residents/resident_manager.tscn").instantiate()
 	root.add_child(map)
 	root.add_child(manager)
 	manager.setup(map, stockpile, clock, EventLog.new(), rng)

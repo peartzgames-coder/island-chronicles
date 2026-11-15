@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="ResourceTypeData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/systems/resource_type_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "wood"
+label = "Kayu"
+initial_amount = 80.0
+capacity = 250.0
+spoilage = 0.0
+yield_min = 3.0
+yield_max = 7.0
+carry_color = Color(0.48, 0.34, 0.22, 1)

@@ -1,7 +1,7 @@
 class_name JobDefinitions
 extends RefCounted
-## Static description of every job: what it produces, how long a shift takes
-## and how strongly the colony currently needs it.
+## Job ids and job rules. Per-job values (colour, shift length, description)
+## are loaded from the JobData files in res://data/residents/.
 
 const FISHER := "Nelayan"
 const GATHERER := "Pengumpul"
@@ -9,35 +9,42 @@ const WOODCUTTER := "Penebang"
 const EXPLORER := "Penjelajah"
 const ALL := [FISHER, GATHERER, WOODCUTTER, EXPLORER]
 
-const WORK_DURATION := {FISHER: 6.0, GATHERER: 4.5, WOODCUTTER: 5.5, EXPLORER: 5.0}
-
-## Base yield range per resource for one work shift, scaled by skill.
-const YIELD := {
-	Stockpile.FISH: Vector2(3, 6),
-	Stockpile.FRUIT: Vector2(3, 6),
-	Stockpile.WOOD: Vector2(3, 7),
-	Stockpile.WATER: Vector2(5, 9),
+const FILES := {
+	FISHER: "res://data/residents/job_fisher.tres",
+	GATHERER: "res://data/residents/job_gatherer.tres",
+	WOODCUTTER: "res://data/residents/job_woodcutter.tres",
+	EXPLORER: "res://data/residents/job_explorer.tres",
 }
+
+static var _jobs: Dictionary = {}
+static var _loaded := false
+
+
+static func get_job(job: String) -> JobData:
+	if not _loaded:
+		_loaded = true
+		for id in FILES:
+			var data := load(FILES[id]) as JobData
+			if data == null:
+				push_error("JobDefinitions: cannot load " + str(FILES[id]))
+				continue
+			_jobs[id] = data
+	return _jobs.get(job)
 
 
 static func color_for(job: String) -> Color:
-	match job:
-		FISHER:
-			return Color("#e8b65d")
-		GATHERER:
-			return Color("#d77e65")
-		WOODCUTTER:
-			return Color("#7db2a1")
-		_:
-			return Color("#a68ac7")
+	var data := get_job(job)
+	return data.color if data != null else Color.WHITE
 
 
 static func work_duration(job: String) -> float:
-	return float(WORK_DURATION.get(job, 5.0))
+	var data := get_job(job)
+	return data.work_duration if data != null else 5.0
 
 
 static func yield_range(resource: String) -> Vector2:
-	return YIELD.get(resource, Vector2(2, 4))
+	var data := ResourceCatalog.get_type(resource)
+	return Vector2(data.yield_min, data.yield_max) if data != null else Vector2(2, 4)
 
 
 ## Gatherers fetch whichever of fruit or water the camp is shorter of.

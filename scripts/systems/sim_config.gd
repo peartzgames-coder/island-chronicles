@@ -2,6 +2,7 @@ class_name SimConfig
 extends RefCounted
 ## Central tuning values for the simulation.
 ## Keep gameplay numbers here so balancing never requires touching AI code.
+## Per-resource and per-job values live as .tres files under res://data/.
 
 const WORLD_SIZE := Vector2(1280, 720)
 const POPULATION := 50
@@ -54,7 +55,5 @@ const SKILL_GAIN := 0.01
 
 # Colony.
 const FIRE_WOOD_PER_SECOND := 0.35
-## Fraction of stored fish / fruit that spoils per simulated second.
-const SPOILAGE := {"fish": 0.0015, "fruit": 0.001}
 const FOOD_WARNING_LEVEL := 20.0
 const DISCOVERY_LOG_COOLDOWN := 12.0

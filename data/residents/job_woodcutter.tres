@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="JobData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/residents/job_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "Penebang"
+description = "Menebang kayu untuk api unggun dan bangunan."
+color = Color(0.4902, 0.698, 0.6314, 1)
+work_duration = 5.5

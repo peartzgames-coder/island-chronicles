@@ -30,7 +30,16 @@ var tree_shades: Array[int] = []
 var tree_fruit: Array[float] = []
 var fishing_spots: Array[Vector2] = []
 var spot_fish: Array[float] = []
-var fire_lit := true
+## The camp building child (scenes/buildings/camp.tscn), if present.
+var camp: Camp
+
+## Mirrors the camp fire state so AI code and the night overlay can read it
+## even when the map is created without its scene (e.g. in tests).
+var fire_lit := true:
+	set(value):
+		fire_lit = value
+		if camp != null:
+			camp.fire_lit = value
 
 var _is_setup := false
 
@@ -41,6 +50,10 @@ func _ready() -> void:
 
 ## Builds the site lists. Safe to call more than once.
 func setup() -> void:
+	if camp == null:
+		camp = get_node_or_null("Camp") as Camp
+		if camp != null:
+			camp.fire_lit = fire_lit
 	if _is_setup:
 		return
 	_is_setup = true
@@ -168,7 +181,7 @@ func take_fish(index: int, amount: float) -> float:
 # --- Drawing -----------------------------------------------------------------
 
 func _process(_delta: float) -> void:
-	queue_redraw()
+	queue_redraw()  # tree fruit changes continuously
 
 
 func _draw() -> void:
@@ -187,17 +200,7 @@ func _draw() -> void:
 	# Trees and bushes
 	for i in range(tree_positions.size()):
 		_draw_tree(tree_positions[i], tree_shades[i], tree_fruit[i])
-	# Beach camp
-	draw_rect(CAMP_RECT, Color("#8a6042"))
-	draw_rect(Rect2(738, 307, 64, 34), Color("#d6b27a"))
-	draw_line(Vector2(735, 300), Vector2(770, 275), Color("#594331"), 5)
-	draw_line(Vector2(770, 275), Vector2(812, 300), Color("#594331"), 5)
-	if fire_lit:
-		draw_circle(FIRE_POS, 12, Color("#d77b40"))
-		draw_circle(FIRE_POS, 6, Color("#f3c46b"))
-	else:
-		draw_circle(FIRE_POS, 10, Color("#5a4a40"))
-		draw_circle(FIRE_POS, 4, Color("#7a5a44"))
+	# The beach camp is drawn by the Camp building child node.
 	# Boat
 	draw_colored_polygon(PackedVector2Array([Vector2(180,360),Vector2(250,350),Vector2(230,380),Vector2(195,383)]), Color("#78543d"))
 	draw_line(Vector2(215, 350), Vector2(215, 300), Color("#e4d5ad"), 3)

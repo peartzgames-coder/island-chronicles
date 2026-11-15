@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="ResourceTypeData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/systems/resource_type_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "water"
+label = "Air"
+initial_amount = 180.0
+capacity = 300.0
+spoilage = 0.0
+yield_min = 5.0
+yield_max = 9.0
+carry_color = Color(0.38, 0.62, 0.86, 1)

@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="ResidentProfile" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/residents/resident_profile.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+first_names = PackedStringArray("Ari", "Bima", "Citra", "Dara", "Eko", "Fajar", "Gita", "Hana", "Indra", "Joko", "Kirana", "Laras", "Made", "Nadia", "Oki", "Putri", "Raka", "Sari", "Tono", "Wulan")
+age_range = Vector2i(18, 55)
+hunger_range = Vector2(8, 35)
+thirst_range = Vector2(5, 30)
+energy_range = Vector2(60, 100)
+social_range = Vector2(35, 85)
+trait_range = Vector2(0.2, 1)
+main_skill_range = Vector2(0.5, 0.85)
+other_skill_range = Vector2(0.05, 0.35)

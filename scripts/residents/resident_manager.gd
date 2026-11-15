@@ -5,14 +5,9 @@ extends Node2D
 
 signal resident_died(resident: Resident)
 
-const FIRST_NAMES := ["Ari","Bima","Citra","Dara","Eko","Fajar","Gita","Hana","Indra","Joko","Kirana","Laras","Made","Nadia","Oki","Putri","Raka","Sari","Tono","Wulan"]
 const SELECT_RADIUS := 24.0
-const CARRY_COLORS := {
-	Stockpile.FISH: Color(0.62, 0.74, 0.82),
-	Stockpile.FRUIT: Color(0.94, 0.63, 0.25),
-	Stockpile.WOOD: Color(0.48, 0.34, 0.22),
-	Stockpile.WATER: Color(0.38, 0.62, 0.86),
-}
+
+@export var profile: ResidentProfile = preload("res://data/residents/resident_profile.tres")
 
 var residents: Array[Resident] = []
 var map: IslandMap
@@ -47,23 +42,28 @@ func spawn_population(count: int) -> void:
 	for i in range(count):
 		var r := Resident.new()
 		r.id = residents.size()
-		r.full_name = FIRST_NAMES[i % FIRST_NAMES.size()] + (" %02d" % (i + 1))
+		var names := profile.first_names
+		r.full_name = names[i % names.size()] + (" %02d" % (i + 1))
 		r.pos = map.random_land_point(rng)
 		r.target = r.pos
-		r.age = rng.randi_range(18, 55)
-		r.hunger = rng.randf_range(8, 35)
-		r.thirst = rng.randf_range(5, 30)
-		r.energy = rng.randf_range(60, 100)
-		r.social = rng.randf_range(35, 85)
+		r.age = rng.randi_range(profile.age_range.x, profile.age_range.y)
+		r.hunger = _roll(profile.hunger_range)
+		r.thirst = _roll(profile.thirst_range)
+		r.energy = _roll(profile.energy_range)
+		r.social = _roll(profile.social_range)
 		r.job = JobDefinitions.ALL[i % JobDefinitions.ALL.size()]
 		r.color = JobDefinitions.color_for(r.job)
-		r.diligence = rng.randf_range(0.2, 1.0)
-		r.sociability = rng.randf_range(0.2, 1.0)
-		r.curiosity = rng.randf_range(0.2, 1.0)
+		r.diligence = _roll(profile.trait_range)
+		r.sociability = _roll(profile.trait_range)
+		r.curiosity = _roll(profile.trait_range)
 		for job_name in JobDefinitions.ALL:
-			r.skills[job_name] = rng.randf_range(0.5, 0.85) if job_name == r.job else rng.randf_range(0.05, 0.35)
+			r.skills[job_name] = _roll(profile.main_skill_range if job_name == r.job else profile.other_skill_range)
 		r.timer = rng.randf_range(0.0, 1.0)  # stagger the first decisions
 		residents.append(r)
+
+
+func _roll(value_range: Vector2) -> float:
+	return rng.randf_range(value_range.x, value_range.y)
 
 
 # --- Simulation --------------------------------------------------------------
@@ -275,7 +275,8 @@ func _draw_resident(r: Resident, is_selected: bool) -> void:
 		draw_rect(Rect2(pos.x - 4, pos.y + 7, 3, 5), Color("#463f3a"))
 		draw_rect(Rect2(pos.x + 1, pos.y + 7, 3, 5), Color("#463f3a"))
 		if r.carry_amount > 0.0:
-			draw_rect(Rect2(pos.x - 3, pos.y - 15, 6, 5), CARRY_COLORS.get(r.carry_type, Color.WHITE))
+			var carried := ResourceCatalog.get_type(r.carry_type)
+			draw_rect(Rect2(pos.x - 3, pos.y - 15, 6, 5), carried.carry_color if carried != null else Color.WHITE)
 		elif r.action == Resident.Action.SOCIALIZE and r.phase == Resident.Phase.PERFORM:
 			for i in range(3):
 				draw_circle(pos + Vector2(-4 + i * 4, -13), 1.2, Color(1, 1, 1, 0.85))

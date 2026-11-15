@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="JobData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/residents/job_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "Penjelajah"
+description = "Menjelajahi pulau dan menemukan sumber daya baru."
+color = Color(0.651, 0.5412, 0.7804, 1)
+work_duration = 5.0

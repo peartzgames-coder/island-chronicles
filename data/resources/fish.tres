@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="ResourceTypeData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/systems/resource_type_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "fish"
+label = "Ikan"
+initial_amount = 120.0
+capacity = 300.0
+spoilage = 0.0015
+yield_min = 3.0
+yield_max = 6.0
+carry_color = Color(0.62, 0.74, 0.82, 1)

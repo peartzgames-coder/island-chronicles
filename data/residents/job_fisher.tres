@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="JobData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/residents/job_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "Nelayan"
+description = "Menangkap ikan di titik pancing pantai."
+color = Color(0.9098, 0.7137, 0.3647, 1)
+work_duration = 6.0

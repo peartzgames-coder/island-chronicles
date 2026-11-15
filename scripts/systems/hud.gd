@@ -71,7 +71,7 @@ func _build() -> void:
 	sub.add_theme_font_size_override("font_size", 12)
 	sub.modulate = Color("#b8c6d8")
 	left_box.add_child(sub)
-	for resource in Stockpile.ORDER:
+	for resource in Stockpile.ids():
 		var text := Stockpile.label(resource)
 		var l := Label.new()
 		l.name = text + "Value"
@@ -159,7 +159,7 @@ func set_speed(speed: float) -> void:
 func refresh(clock: GameClock, stockpile: Stockpile, manager: ResidentManager, event_log: EventLog) -> void:
 	day_label.text = clock.time_string()
 	stats_label.text = "%d HIDUP  |  %d MENINGGAL" % [manager.living_count(), manager.deaths]
-	for resource in Stockpile.ORDER:
+	for resource in Stockpile.ids():
 		var l: Label = resource_labels.get(resource)
 		if l != null:
 			l.text = Stockpile.label(resource) + ": " + str(int(stockpile.get_amount(resource)))

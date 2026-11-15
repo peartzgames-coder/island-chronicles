@@ -8,28 +8,33 @@ A small, playable autonomous island-survival simulation inspired by the uploaded
 
 ## Run
 1. Open the `project.godot` file (repository root) in Godot 4.3+.
-2. Press **F5** to run (main scene: `scenes/main.tscn`).
+2. Press **F5** to run (main scene: `scenes/world/main.tscn`).
 
 ## Project structure
 ```
 project.godot
-scenes/main.tscn                 Main scene: IslandMap, ResidentManager, NightOverlay, Hud
+scenes/
+  world/main.tscn                 Main scene (instances the scenes below + NightOverlay)
+  world/island.tscn               IslandMap with the Camp building
+  residents/resident_manager.tscn All residents (data-driven, drawn in one node)
+  buildings/camp.tscn             Shelter hut + camp fire
+  ui/hud.tscn                     HUD
 scripts/
-  main.gd                        Composition root: wiring, pause, speed, input
-  core/                          SimConfig (tuning), GameClock, EventLog
-  economy/stockpile.gd           Camp storage for fish, fruit, wood, water
-  world/island_map.gd            Island drawing + points of interest (camp, pond, trees, fishing spots)
-  world/night_overlay.gd         Night darkness and camp-fire glow
-  residents/resident.gd          Resident data (needs, personality, skills, relationships)
-  residents/resident_needs.gd    Need decay and health
-  residents/resident_manager.gd  Runs all residents, colony upkeep, drawing, selection
-  residents/ai/                  ResidentBrain (utility AI) + ResidentActions (state machine)
-  residents/jobs/                JobDefinitions
-  ui/hud.gd                      HUD
-assets/                          Placeholder folders for future sprites, audio, fonts
-docs/                            Game design + Resident AI documentation
-tests/test_resident_ai.gd        Headless smoke test
+  ai/                             ResidentBrain (utility AI), ResidentActions (state machine)
+  residents/                      Resident, ResidentNeeds, ResidentManager, JobDefinitions,
+                                  JobData + ResidentProfile (data classes)
+  systems/                        SimConfig, GameClock, EventLog, Stockpile, ResourceCatalog,
+                                  ResourceTypeData, Hud
+  world/                          main.gd (composition root), IslandMap, Camp, NightOverlay
+assets/characters|environment|ui  Placeholders for future art
+data/
+  residents/                      job_*.tres (colour, shift length) + resident_profile.tres (names, start ranges)
+  resources/                      fish/fruit/wood/water.tres (start amount, capacity, spoilage, yield, colour)
+docs/                             Game design + Resident AI documentation
+tests/test_resident_ai.gd         Headless smoke test
 ```
+Balancing values for jobs, resources and new residents are `.tres` files in `data/`:
+open them in the Godot Inspector to edit. Global AI/needs tuning is in `scripts/systems/sim_config.gd`.
 The original `IslandChronicles_Godot4_Prototype.zip` is kept for reference.
 
 ## Current prototype features

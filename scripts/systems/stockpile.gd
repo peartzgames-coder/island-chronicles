@@ -1,6 +1,7 @@
 class_name Stockpile
 extends RefCounted
 ## Shared camp storage. Residents deposit what they gather and consume from it.
+## Starting amounts, capacities and spoilage come from res://data/resources/.
 
 signal changed(resource: String, amount: float)
 
@@ -8,11 +9,21 @@ const FISH := "fish"
 const FRUIT := "fruit"
 const WOOD := "wood"
 const WATER := "water"
-const ORDER := [FISH, FRUIT, WOOD, WATER]
-const LABELS := {FISH: "Ikan", FRUIT: "Buah", WOOD: "Kayu", WATER: "Air"}
 
-var amounts := {FISH: 120.0, FRUIT: 160.0, WOOD: 80.0, WATER: 180.0}
-var caps := {FISH: 300.0, FRUIT: 300.0, WOOD: 250.0, WATER: 300.0}
+var amounts := {}
+var caps := {}
+
+
+func _init() -> void:
+	for id in ResourceCatalog.ids():
+		var data := ResourceCatalog.get_type(id)
+		amounts[id] = data.initial_amount
+		caps[id] = data.capacity
+
+
+## Resource ids in display order.
+static func ids() -> Array[String]:
+	return ResourceCatalog.ids()
 
 
 func get_amount(resource: String) -> float:
@@ -47,9 +58,10 @@ func take(resource: String, amount: float) -> float:
 
 ## Perishable food slowly spoils so the colony must keep working.
 func apply_spoilage(delta: float) -> void:
-	for resource in SimConfig.SPOILAGE:
-		var rate: float = SimConfig.SPOILAGE[resource]
-		amounts[resource] = maxf(0.0, get_amount(resource) * (1.0 - rate * delta))
+	for id in ResourceCatalog.ids():
+		var rate := ResourceCatalog.get_type(id).spoilage
+		if rate > 0.0:
+			amounts[id] = maxf(0.0, get_amount(id) * (1.0 - rate * delta))
 
 
 func food_total() -> float:
@@ -74,4 +86,5 @@ func demand(resource: String) -> float:
 
 
 static func label(resource: String) -> String:
-	return str(LABELS.get(resource, resource))
+	var data := ResourceCatalog.get_type(resource)
+	return data.label if data != null else resource
