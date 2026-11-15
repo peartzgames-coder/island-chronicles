@@ -1,4 +1,4 @@
-# Island Chronicles — Godot 4 Prototype
+# Island Chronicles — Godot 4 (v0.2)
 
 A small, playable autonomous island-survival simulation inspired by the uploaded reference video.
 
@@ -20,7 +20,8 @@ scenes/
   buildings/camp.tscn             Shelter hut + camp fire
   ui/hud.tscn                     HUD
 scripts/
-  ai/                             ResidentBrain (utility AI), ResidentActions (state machine)
+  ai/                             ResidentBrain (highest-need decisions), ResidentStateMachine,
+                                  ResidentMovement, states/ (one script per AI state)
   residents/                      Resident, ResidentNeeds, ResidentManager, JobDefinitions,
                                   JobData + ResidentProfile (data classes)
   systems/                        SimConfig, GameClock, EventLog, Stockpile, ResourceCatalog,
@@ -40,7 +41,7 @@ The original `IslandChronicles_Godot4_Prototype.zip` is kept for reference.
 ## Current prototype features
 - Tropical top-down island drawn procedurally (no external assets required).
 - 50 autonomous residents with names, ages, jobs, health, hunger, thirst, energy and social need.
-- **Resident AI**: every resident decides on their own to eat, drink, sleep, work, socialize or wander (see `docs/RESIDENT_AI.md`).
+- **Resident AI (v0.2)**: a state machine with 8 states — Idle, Working, Searching Food, Searching Water, Eating, Drinking, Sleeping, Socializing. Each resident picks the state for their most urgent need (hunger, thirst, energy, health, social) and otherwise works or idles (see `docs/RESIDENT_AI.md`).
 - Jobs produce real resources: fishers catch fish, gatherers pick fruit or fetch water, woodcutters chop wood, explorers make discoveries. Goods are carried back to the camp stockpile.
 - Eating and drinking consume the stockpile; residents forage wild fruit or drink at the pond when the camp is empty.
 - Personality traits, skills that improve with work, and friendships formed by chatting.
@@ -48,7 +49,7 @@ The original `IslandChronicles_Godot4_Prototype.zip` is kept for reference.
 - Basic survival pressure: hunger and thirst rise; health deteriorates when needs become critical.
 - Day/night clock and day counter.
 - Resource counters for fish, fruit, wood and water.
-- Select a resident by clicking/tapping them to inspect their status, current action, goal, carried goods, traits and best friend.
+- Select a resident by clicking/tapping them to inspect their needs, current state, activity, the reason for the decision, carried goods, traits and best friend.
 - Pause/resume and simulation speed controls (1x, 2x, 4x).
 - Event log and population/death counters.
 - Mouse and touchscreen selection input.

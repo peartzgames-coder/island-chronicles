@@ -35,7 +35,7 @@ Each resident has:
 The included prototype implements the island scene, 50 autonomous wanderers, basic needs and health pressure, a day clock, resource indicators, selection panel, event log, pause and speed controls.
 
 ## Implemented since the MVP
-Needs-driven utility AI per resident, job-based harvesting with real stockpile deposits and consumption, personality traits, skill growth, affinity-based friendships, day/night sleep cycle and camp fire. See `RESIDENT_AI.md`.
+v0.2: Resident AI state machine (8 states) with highest-need decisions, fishers searching for stocked spots, gatherers searching for fruit, job-based harvesting with real stockpile deposits and consumption, personality traits, skill growth, affinity-based friendships, day/night sleep cycle and camp fire. See `RESIDENT_AI.md`.
 
 ## Not yet implemented
 Construction, groups/factions, romance, family/reproduction, weather, diseases, combat, save/load and final art/audio.

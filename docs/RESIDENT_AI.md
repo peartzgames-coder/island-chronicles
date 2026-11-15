@@ -1,75 +1,103 @@
-# Resident AI System
+# Resident AI System (v0.2)
 
-Every islander is an independent agent with needs, a job, a personality and
-relationships. Nothing is scripted per resident; behaviour emerges from the
-rules below. Global tuning lives in `scripts/systems/sim_config.gd`; per-job and per-resource values are `.tres` files in `data/`.
+Every islander is an autonomous agent driven by a **state machine**. A
+**brain** chooses the next state from the resident's **most urgent need**.
+Global tuning: `scripts/systems/sim_config.gd`. Per-job and per-resource values:
+`.tres` files in `data/`.
 
-## Data — `scripts/residents/resident.gd`
-| Group | Fields |
+## Architecture
+```
+ResidentManager (scripts/residents/resident_manager.gd)  — every simulation step, per resident:
+  1. ResidentNeeds.update()          needs + health, death check
+  2. ResidentStateMachine.update()   runs the current state
+  3. ResidentBrain.choose_state()    when the state finishes (or an emergency interrupts)
+```
+| File | Role |
 |---|---|
-| Identity | name, age, job, colour, position |
-| Needs (0–100) | hunger, thirst (0 = satisfied); energy, social, health (100 = satisfied) |
-| Personality (0–1) | diligence (work), sociability (company), curiosity (wandering/discovery) |
-| Skills (0–1) | one per job; main job starts at 0.5–0.85 and improves with each shift |
-| Relationships | affinity per resident (-100…100); ≥ 30 both ways = friends |
+| `scripts/residents/resident.gd` | Resident data, `State` / `Step` enums |
+| `scripts/residents/resident_needs.gd` | Need decay, health, cause of death |
+| `scripts/ai/resident_brain.gd` | Highest-need decision + interrupts |
+| `scripts/ai/resident_state_machine.gd` | enter / update / exit, transitions, redirects |
+| `scripts/ai/resident_movement.gd` | Walking helpers |
+| `scripts/ai/states/*.gd` | One script per state (base: `resident_state.gd`) |
 
-## Needs — `scripts/residents/resident_needs.gd`
-- Hunger and thirst rise every second (halved while sleeping).
-- Energy drains while awake, faster while working. Sleeping restores it, faster when the camp fire is lit.
-- Social need decays unless the resident is chatting.
-- Health drops when hunger > 75 or thirst > 80 (prototype rule), or energy is 0.
-  It slowly regenerates when needs are under control, faster during sleep.
-- Health 0 → death, logged with the cause (kelaparan / dehidrasi / kelelahan).
+States are stateless strategies: one instance per state serves all residents,
+and per-resident data (target, timer, step…) lives on the `Resident`.
+`update()` returns `STAY`, `DECIDE` (ask the brain) or the id of the next state.
 
-## Decisions — `scripts/ai/resident_brain.gd` (utility AI)
-Each action gets a score; the highest (plus a little noise) wins.
-
-| Action | Score grows with |
-|---|---|
-| Makan / Minum | hunger² / thirst², big bonus near critical |
-| Tidur | tiredness², bonus at night and just before nightfall |
-| Bekerja | diligence × colony demand for the job's resource; reduced in the evening, mostly off at night |
-| Bersosialisasi | loneliness × sociability; reduced at night |
-| Jalan-jalan / Santai | small baseline (curiosity) — what residents do when nothing is pressing |
-
-Decisions are made when an action finishes. Every ~1 s the brain also checks
-for interrupts: critical hunger/thirst/exhaustion, or nightfall while still
-walking to a job. Residents carrying goods finish delivering first.
-
-## Actions — `scripts/ai/resident_actions.gd` (state machine)
-`MOVE → PERFORM → (DELIVER)`
-
-| Action | Behaviour |
-|---|---|
-| Eat | walk to camp, eat 1 fish/fruit from the stockpile; if empty, eat wild fruit from the nearest tree |
-| Drink | camp water (if closer and available) or the pond (always free) |
-| Sleep | walk to the camp, sleep until morning |
-| Work | walk to a work site, work a shift, carry the yield back to the camp stockpile |
-| Socialize | walk to a nearby resident (friends preferred); a free partner joins the chat; both gain social and affinity |
-| Wander / Idle | prototype wandering |
-
-## Jobs — `scripts/residents/job_definitions.gd` + `data/residents/job_*.tres`
-| Job | Site | Produces |
+## Needs
+| Need | Scale | Changes |
 |---|---|---|
-| Nelayan | beach fishing spots (fish regenerate) | Ikan |
-| Pengumpul | fruit trees or the pond — whichever the camp needs more | Buah / Air |
-| Penebang | trees | Kayu |
-| Penjelajah | far corners of the island | random discoveries (fruit, driftwood, fish) |
+| Hunger | 0 = full | +0.55/s (half while sleeping); Eating −18/s |
+| Thirst | 0 = quenched | +0.72/s (half while sleeping); Drinking −22/s |
+| Energy | 100 = rested | −0.8/s awake, −1.8/s working; Sleeping +4.5/s (+1.5 if camp fire lit) |
+| Health | 100 = healthy | −0.8/s if hunger > 75 or thirst > 80; −0.3/s at 0 energy; regenerates when fed (faster asleep) |
+| Social | 100 = content | −0.2/s; Socializing +9/s |
 
-Yield = base range × (0.6 + 0.8 × skill). Work desire follows stockpile demand,
-so production self-regulates: residents work hard when stores are low and enjoy
-free time when they are full.
+**Death:** health 0, logged with the cause — *kelaparan*, *dehidrasi* or *kelelahan*.
 
-## Colony economy
-- Start amounts, caps, spoilage and yields: `data/resources/*.tres` (caps: 300 fish/fruit/water, 250 wood).
-- Fish and fruit slowly spoil; the camp fire burns wood at night.
-- No wood → fire goes out (logged) → slower sleep recovery.
-- Low food triggers a log warning.
+## Decision: highest need wins — `ResidentBrain`
+Each need gets an urgency (0…1+). The most urgent need that reaches its
+threshold (`SimConfig.NEED_THRESHOLDS`, 0.5–0.6) picks the state:
+
+| Need | Urgency | → State |
+|---|---|---|
+| Hunger | hunger/100, +0.4 near critical | Searching Food |
+| Thirst | thirst/100 × 1.05, +0.4 near critical | Searching Water |
+| Energy | tiredness; ≥ 0.85 at night, ≥ 0.62 just before night | Sleeping |
+| Health | 1 − health/100 | Sleeping (rest heals) |
+| Social | loneliness × sociability (× 0.4 at night) | Socializing |
+
+No pressing need → **Working** if `work_score` (diligence × colony demand for
+the job × time of day × energy) beats `idle_score`, otherwise **Idle**.
+
+**Interrupts** (checked ~1×/s): critical hunger/thirst/exhaustion abandons the
+current state; nightfall cancels a work trip that has not started yet. Residents
+carrying goods finish delivering first.
+
+## States
+```
+           ┌──────────── Brain (highest need) ─────────────┐
+           ▼              ▼              ▼          ▼       ▼
+ Searching Food   Searching Water    Sleeping  Socializing  Working / Idle
+        │                │
+        ▼                ▼
+     Eating           Drinking
+```
+| State | Behaviour |
+|---|---|
+| **Idle** | Prototype wandering, or a short rest |
+| **Working** | MOVE: search for a site with resources (try another if empty) → PERFORM: work a shift → DELIVER: carry the yield to the camp stockpile |
+| **Searching Food** | Walk to the camp stockpile, or the nearest fruit tree if the camp is empty; try up to 3 sources → Eating. Nothing anywhere → Idle |
+| **Searching Water** | Walk to the camp water store (if closer and stocked) or the pond → Drinking |
+| **Eating** | Consume the portion (1 fish/fruit already taken from the stockpile or tree) |
+| **Drinking** | Drink (1 water taken from the camp, or free at the pond) |
+| **Sleeping** | Walk to the camp, sleep until morning once energy ≥ 60 and health ≥ 50 |
+| **Socializing** | Walk to a nearby resident (friends preferred); an idle partner joins; both gain social + affinity (friends at ≥ 30 both ways) |
+
+## Jobs (Working)
+| Job | Searches for | Stock change |
+|---|---|---|
+| Nelayan | Fishing spot with fish left (spots deplete and regenerate) | Spot −catch, camp Ikan +catch |
+| Pengumpul | Tree with fruit (or the pond when the camp needs water more) | Tree −fruit, camp Buah / Air + |
+| Penebang | A nearby tree | camp Kayu + |
+| Penjelajah | A far corner of the island | random discovery → Buah / Kayu / Ikan + |
+
+Yield = data range × (0.6 + 0.8 × skill); skill grows each shift.
+Stock also changes through eating, drinking, spoilage (fish, fruit) and the
+camp fire burning wood at night.
+
+## Adding a state
+1. Add an entry to `Resident.State` and `Resident.STATE_NAMES`.
+2. Create `scripts/ai/states/<name>_state.gd` extending `ResidentState`.
+3. Register it in `ResidentStateMachine._init()`.
+4. Return it from `ResidentBrain.choose_state()` (or from another state's `update()`).
 
 ## Testing
 ```bash
 godot --headless --import
 godot --headless -s res://tests/test_resident_ai.gd
 ```
-The smoke test simulates 12 days with a fixed seed and checks survival, deliveries,
-all action types, night-time sleeping and a food-crisis scenario (empty camp).
+Covers: data and scenes, highest-need decisions, state transitions and stock
+changes, the fisher searching for fish, death, a 12-day 50-resident run (all 8
+states used, night sleep, deliveries) and a food crisis.
